@@ -118,7 +118,7 @@
   <div id="main">
     <!-- Stretch Tab -->
     <div id="stretch-tab">
-      <p class="section-label">Today's Routine · ~10 min</p>
+      <p class="section-label" id="routine-label">Today's Routine · ~10 min</p>
       <div class="stretch-list" id="stretch-list"></div>
     </div>
 
@@ -596,9 +596,45 @@ function switchTab(tab) {
   saveState();
 }
 
+// ─── Calories ─────────────────────────────────────────────────────────────────
+// Stretching MET ≈ 2.3. Total hold time across all stretches + transitions.
+function calcKcal() {
+  // Try to read weight from calisthenics app profile first, then our own state
+  let weightKg = 75;
+  try {
+    const cal = JSON.parse(localStorage.getItem('calisthenics_progress_v2') || '{}');
+    if (cal.profile) {
+      const w = parseFloat(cal.profile.weight);
+      if (!isNaN(w)) weightKg = cal.profile.unit === 'lbs' ? w * 0.453592 : w;
+    }
+  } catch(e) {}
+  // fallback: our own state
+  if (state.profile) {
+    const w = parseFloat(state.profile.weight);
+    if (!isNaN(w)) weightKg = state.profile.unit === 'lbs' ? w * 0.453592 : w;
+  }
+
+  // Total active seconds: sum of all hold times (both sides if bilateral) + get-ready phases
+  let totalSecs = 0;
+  STRETCHES.forEach(s => {
+    const sides = s.bilateral ? 2 : 1;
+    totalSecs += s.sets * sides * s.hold; // hold time
+    totalSecs += s.sets * 5;              // get-ready per set
+  });
+  const hours = totalSecs / 3600;
+  const MET = 2.3;
+  return Math.round(MET * weightKg * hours * 1.1);
+}
+
+function renderRoutineLabel() {
+  const kcal = calcKcal();
+  document.getElementById('routine-label').textContent = `Today's Routine · ~10 min · 🔥 ${kcal} kcal`;
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 switchTab(state.activeTab || 'stretch');
 renderAll();
+renderRoutineLabel();
 </script>
 </body>
 </html>
